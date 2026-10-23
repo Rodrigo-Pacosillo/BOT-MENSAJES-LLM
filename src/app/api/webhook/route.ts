@@ -7,9 +7,9 @@ import { buildSystemPrompt } from "@/lib/llm/system-prompt-sexshop";
 import { getLlmProvider } from "@/lib/llm";
 
 export async function GET(req: NextRequest) {
-  const mode = req.nextUrl.searchParams.get("hub_mode");
-  const token = req.nextUrl.searchParams.get("hub_verify_token");
-  const challenge = req.nextUrl.searchParams.get("hub_challenge");
+  const mode = req.nextUrl.searchParams.get("hub.mode");
+  const token = req.nextUrl.searchParams.get("hub.verify_token");
+  const challenge = req.nextUrl.searchParams.get("hub.challenge");
 
   if (mode === "subscribe" && token === env.META_VERIFY_TOKEN) {
     return new NextResponse(challenge ?? "", {
