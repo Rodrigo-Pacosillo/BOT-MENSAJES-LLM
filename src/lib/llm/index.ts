@@ -18,12 +18,16 @@ export function getLlmProvider(env: LlmFactoryEnv): LlmProvider {
       ? "https://api.groq.com/openai/v1"
       : env.LLM_PROVIDER === "z.ai"
         ? "https://api.z.ai/api/paas/v4"
-        : "https://api.openai.com/v1");
+        : env.LLM_PROVIDER === "openrouter"
+          ? "https://openrouter.ai/api/v1"
+          : "https://api.openai.com/v1");
 
   switch (env.LLM_PROVIDER) {
     case "groq":
       return createGroqProvider({ apiKey: env.LLM_API_KEY, model: env.LLM_MODEL });
     case "z.ai":
+      return createOpenAIProvider({ apiKey: env.LLM_API_KEY, baseUrl, model: env.LLM_MODEL });
+    case "openrouter":
       return createOpenAIProvider({ apiKey: env.LLM_API_KEY, baseUrl, model: env.LLM_MODEL });
     case "openai":
     default:

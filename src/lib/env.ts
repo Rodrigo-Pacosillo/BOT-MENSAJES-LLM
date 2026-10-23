@@ -6,7 +6,7 @@ const EnvSchema = z.object({
   META_VERIFY_TOKEN: z.string().min(1),
   META_APP_SECRET: z.string().min(1),
   META_GRAPH_VERSION: z.string().default("v20.0"),
-  LLM_PROVIDER: z.enum(["openai", "groq", "z.ai"]).default("openai"),
+  LLM_PROVIDER: z.enum(["openai", "groq", "z.ai", "openrouter"]).default("openai"),
   LLM_API_KEY: z.string().min(1),
   LLM_BASE_URL: z.string().optional(),
   LLM_MODEL: z.string().min(1),
