@@ -3,8 +3,8 @@ import { env } from "@/lib/env";
 import { isSignatureValid } from "@/lib/whatsapp/signature";
 import { WhatsAppWebhookSchema } from "@/lib/whatsapp/schemas";
 import { sendWhatsAppText } from "@/lib/whatsapp/send";
-import { buildSystemPrompt } from "@/lib/llm/system-prompt-sexshop";
-import { getLlmProvider } from "@/lib/llm";
+import { handleMessage } from "@/lib/pipeline/handle-message";
+import { logWebhook } from "@/lib/utils/log";
 
 export async function GET(req: NextRequest) {
   const mode = req.nextUrl.searchParams.get("hub.mode");
@@ -25,45 +25,76 @@ export async function POST(req: NextRequest) {
   const signature = req.headers.get("x-hub-signature-256");
   const rawBody = await req.text();
 
+  // PASO 1 — Validar firma HMAC SHA-256 sobre el body raw
   if (!isSignatureValid(rawBody, signature)) {
+    logWebhook("Firma invalida");
     return new NextResponse("Invalid signature", { status: 401 });
   }
 
+  // Leer y parsear el body
   let payload: unknown;
   try {
     payload = JSON.parse(rawBody);
   } catch {
-    return new NextResponse("Invalid JSON", { status: 400 });
+    logWebhook("JSON invalido");
+    return new NextResponse(null, { status: 200 });
   }
 
+  // PASO 2 — Validar payload con Zod
   const parsed = WhatsAppWebhookSchema.safeParse(payload);
   if (!parsed.success) {
-    console.error("[webhook] Payload invalido:", parsed.error.flatten().fieldErrors);
-    return new NextResponse("Invalid payload", { status: 400 });
+    logWebhook("Payload invalido", parsed.error.flatten().fieldErrors);
+    return new NextResponse(null, { status: 200 });
   }
 
-  const message = parsed.data.entry[0]?.changes[0]?.value?.messages?.[0];
+  const entry = parsed.data.entry[0];
+  if (!entry) {
+    return new NextResponse(null, { status: 200 });
+  }
 
-  if (message) {
-    console.log("[webhook] Mensaje recibido", { from: message.from, waId: message.id });
+  const changes = entry.changes[0];
+  if (!changes) {
+    return new NextResponse(null, { status: 200 });
+  }
+
+  const value = changes.value;
+
+  // Statuses (entregado/leído): ignorar con 200
+  if (value.statuses && value.statuses.length > 0) {
+    return new NextResponse(null, { status: 200 });
+  }
+
+  const messages = value.messages;
+  if (!messages || messages.length === 0) {
+    return new NextResponse(null, { status: 200 });
+  }
+
+  const message = messages[0];
+  const phone = message.from;
+  const wamid = message.id;
+  const text = message.text?.body;
+
+  // PASO 4 — Filtrar tipo de mensaje: solo texto
+  if (!text) {
+    const cuerpo =
+      "Por ahora solo puedo procesar mensajes de texto. ¿Puedes contarme por escrito en qué te puedo ayudar?";
     try {
-      const system = buildSystemPrompt();
-      const llm = getLlmProvider(env);
-      const response = await llm.generate({
-        system,
-        history: [],
-        userMessage: message.text.body,
-      });
-      await sendWhatsAppText(message.from, response);
-    } catch (error) {
-      console.error("[llm] Error generando respuesta:", error);
-      try {
-        await sendWhatsAppText(message.from, "Disculpa, tuve un problema. Un asesor te responderá pronto.");
-      } catch (sendError) {
-        console.error("[whatsapp] Error al enviar mensaje de respaldo:", sendError);
-      }
+      await sendWhatsAppText(phone, cuerpo);
+    } catch {
+      // El envío falló, pero seguimos con 200 para que Meta no reintente
     }
+    logWebhook("Mensaje no-texto ignorado", { telefono: phone });
+    return new NextResponse(null, { status: 200 });
   }
 
+  // Texto válido: pasar al pipeline (idempotencia y BD se conectan en TAREA 2-4)
+  try {
+    await handleMessage(phone, wamid, text);
+    logWebhook("Mensaje procesado", { telefono: phone });
+  } catch (error) {
+    logWebhook("Error en pipeline", { telefono: phone, error: String(error) });
+  }
+
+  // SIEMPRE responder 200 a Meta cuando el payload es válido
   return new NextResponse(null, { status: 200 });
 }

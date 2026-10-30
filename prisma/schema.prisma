@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EstadoContacto {
+  nuevo
+  prospecto
+  cliente
+}
+
+model Contacto {
+  telefono          String   @id
+  nombre            String?
+  estado            EstadoContacto @default(nuevo)
+  ultima_interaccion DateTime @default(now())
+  creado_en         DateTime @default(now())
+  mensajes          Mensaje[]
+}
+
+model Mensaje {
+  id          String   @id @default(cuid())
+  telefono    String
+  rol         String
+  contenido   String
+  creado_en   DateTime @default(now())
+  contacto    Contacto @relation(fields: [telefono], references: [telefono], onDelete: Cascade)
+}
+
+model MensajeProcesado {
+  meta_message_id String   @id
+  telefono        String
+  resultado       String   @default("procesado")
+  creado_en       DateTime @default(now())
+}

@@ -5,23 +5,23 @@ const EnvSchema = z.object({
   META_PHONE_NUMBER_ID: z.string().min(1),
   META_VERIFY_TOKEN: z.string().min(1),
   META_APP_SECRET: z.string().min(1),
-  META_GRAPH_VERSION: z.string().default("v20.0"),
-  LLM_PROVIDER: z.enum(["openai", "groq", "z.ai", "openrouter"]).default("openai"),
+  META_GRAPH_VERSION: z.string().default("v26.0"),
+  DATABASE_URL: z.string().min(1),
+  LLM_BASE_URL: z.string().url().default("https://integrate.api.nvidia.com/v1"),
   LLM_API_KEY: z.string().min(1),
-  LLM_BASE_URL: z.string().optional(),
   LLM_MODEL: z.string().min(1),
+  APP_URL: z.string().min(1),
+  // Mantener por compatibilidad con llm/index.ts hasta migrar a client.ts (TAREA 5)
+  LLM_PROVIDER: z.string().optional(),
 });
-
-export type Env = z.infer<typeof EnvSchema>;
 
 const parsed = EnvSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error(
-    "[env] Variables de entorno invalidas:",
-    parsed.error.flatten().fieldErrors
-  );
-  throw new Error("Variables de entorno invalidas");
+  const faltantes = Object.keys(parsed.error.flatten().fieldErrors).join(", ");
+  console.error("[env] Faltan variables de entorno:", faltantes);
+  throw new Error(`Faltan variables de entorno: ${faltantes}`);
 }
 
+export type Env = z.infer<typeof EnvSchema>;
 export const env: Env = parsed.data;
