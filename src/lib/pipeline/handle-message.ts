@@ -4,6 +4,7 @@ import { conversationStore } from "../store";
 import { preFilter } from "./pre-filter";
 import { postFilter } from "./post-filter";
 import { sendWhatsAppText } from "../whatsapp/send";
+import { env } from "@/lib/env";
 
 export async function handleMessage(
   phone: string,
@@ -50,10 +51,10 @@ export async function handleMessage(
 
   // 5. Llamar a LLM con timeout y reintento
   const llmProvider = getLlmProvider({
-    LLM_PROVIDER: "nvidia",
-    LLM_API_KEY: "", // se obtendrá del env en el route
-    LLM_BASE_URL: "https://integrate.api.nvidia.com/v1",
-    LLM_MODEL: "llama-3.1-70b-instruct",
+    LLM_PROVIDER: env.LLM_PROVIDER ?? "nvidia",
+    LLM_API_KEY: env.LLM_API_KEY ?? "",
+    LLM_BASE_URL: env.LLM_BASE_URL ?? "https://integrate.api.nvidia.com/v1",
+    LLM_MODEL: env.LLM_MODEL ?? "llama-3.1-70b-instruct",
   });
 
   const { generate } = llmProvider;
