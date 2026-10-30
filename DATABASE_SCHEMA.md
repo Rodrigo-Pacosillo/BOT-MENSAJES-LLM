@@ -8,7 +8,7 @@ El bot es la "Fuente de la Verdad" solo para su propia memoria de conversación.
 - Usar `@map` para mantener convención snake_case en la BD y camelCase en TS.
 - El campo `meta_message_id` en `Mensaje` DEBE ser `@unique` para garantizar idempotencia.
 
-## Schema Prisma (src/schema.prisma)
+## Schema Prisma (prisma/schema.prisma)
 
 ```prisma
 generator client {
